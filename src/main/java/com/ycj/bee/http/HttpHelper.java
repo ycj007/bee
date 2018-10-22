@@ -1,9 +1,6 @@
 package com.ycj.bee.http;
 
-import com.alibaba.fastjson.JSON;
 import com.google.common.collect.Lists;
-import com.google.common.collect.Maps;
-import com.ycj.bee.redis.RedisHelper;
 import lombok.extern.log4j.Log4j2;
 import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.TesseractException;
@@ -12,14 +9,17 @@ import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.util.CollectionUtils;
+import org.springframework.util.StringUtils;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
+import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -28,8 +28,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public class HttpHelper {
 
 
-
-    private static final Logger logger = LoggerFactory.getLogger(HttpHelper.class) ;
+    private static final Logger logger = LoggerFactory.getLogger(HttpHelper.class);
     private static OkHttpClient defaultClient;
     private static OkHttpClient clientWithAuth;
     private static Headers headers = Headers.of(
@@ -37,12 +36,9 @@ public class HttpHelper {
             "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/69.0.3497.81 Chrome/69.0.3497.81 Safari/537.36"
 
 
-
-
-
     );
 
-    private static final ConcurrentHashMap<String,List<Cookie>> cookieStore = new ConcurrentHashMap<>();
+    private static final ConcurrentHashMap<String, List<Cookie>> cookieStore = new ConcurrentHashMap<>();
 
 
     public static final MediaType JSON_TYPE
@@ -77,23 +73,17 @@ public class HttpHelper {
                                 .cookieJar(new CookieJar() {
                                     @Override
                                     public void saveFromResponse(HttpUrl httpUrl, List<Cookie> list) {
-                                        if(list!=null) {
-                                            //RedisHelper.set(httpUrl.host(), com.alibaba.fastjson.JSON.toJSONString(list));
-                                            cookieStore.put(httpUrl.host(),list);
+                                        if (list != null) {
+                                            cookieStore.put(httpUrl.host(), list);
                                         }
                                     }
 
                                     @Override
                                     public List<Cookie> loadForRequest(HttpUrl httpUrl) {
-                                     /*   List<Cookie> result = Lists.newArrayList();
-                                        if(RedisHelper.get(httpUrl.host())!=null){
-                                            return  JSON.parseArray(RedisHelper.get(httpUrl.host()),Cookie.class);
-                                        }else{
-                                            return result;
-                                        }*/
+
 
                                         List<Cookie> data = cookieStore.get(httpUrl.host());
-                                        if(CollectionUtils.isEmpty(data)){
+                                        if (CollectionUtils.isEmpty(data)) {
                                             return Lists.newArrayList();
                                         }
                                         return data;
@@ -121,23 +111,26 @@ public class HttpHelper {
 
     }
 
-    public static  String get(String url) {
+    public static String get(String url) {
         Request request = new Request.Builder()
-                .url(url).headers(headers)
+                .url(url)
+                .headers(headers)
                 .build();
         try {
-        Response response = getDefaultClient().newCall(request).execute();
+            Response response = getDefaultClient().newCall(request)
+                                                  .execute();
 
-            return response.body().string();
+            return response.body()
+                           .string();
         } catch (IOException e) {
-            logger.error("get error",e);
+            logger.error("get error", e);
         }
 
         return null;
     }
 
 
-    public static  String post(String url, String json){
+    public static String post(String url, String json) {
 
         RequestBody body = RequestBody.create(JSON_TYPE, json);
 
@@ -148,18 +141,20 @@ public class HttpHelper {
 
         Response response = null;
         try {
-            response = getDefaultClient().newCall(request).execute();
+            response = getDefaultClient().newCall(request)
+                                         .execute();
 
-            return response.body().string();
+            return response.body()
+                           .string();
         } catch (IOException e) {
-            logger.error("post error",e);
+            logger.error("post error", e);
         }
 
         return null;
     }
 
 
-    public static File download (String url ){
+    public static File download(String url, String suffix) {
 
 
         Set<PosixFilePermission> sets = new HashSet<>();
@@ -169,7 +164,28 @@ public class HttpHelper {
 
         File result = null;
         try {
-              result = Files.createTempFile("test",".jpeg", PosixFilePermissions.asFileAttribute(sets)).toFile();
+
+            String realSuffix = ".jpg";
+            String realPreffix = "download";
+            if (StringUtils.isEmpty(suffix)) {
+                realSuffix = suffix;
+            }
+            FileAttribute<Set<PosixFilePermission>> fileAttribute = PosixFilePermissions.asFileAttribute(sets);
+
+            if (isLinux()) {
+
+                result = Files.createTempFile(realPreffix, realSuffix, fileAttribute)
+                              .toFile();
+            } else if (isWindows()) {
+                result = Files.createTempFile(realPreffix, realSuffix)
+                              .toFile();
+            } else {
+                result = Files.createTempFile(realPreffix, realSuffix, fileAttribute)
+                              .toFile();
+            }
+
+            result = Files.createTempFile(realPreffix, realSuffix)
+                          .toFile();
         } catch (IOException e) {
             e.printStackTrace();
         }
@@ -178,37 +194,41 @@ public class HttpHelper {
                 .build();
 
         try {
-            Response response = getDefaultClient().newCall(request).execute();
+            Response response = getDefaultClient().newCall(request)
+                                                  .execute();
 
 
-
-            FileUtils.copyInputStreamToFile(response.body().byteStream(),result);
+            FileUtils.copyInputStreamToFile(response.body()
+                                                    .byteStream(), result);
 
 
         } catch (IOException e) {
-            logger.error("download  error",e);
+            logger.error("download  error", e);
         }
 
 
-        return  result;
+        return result;
 
     }
 
+    private static boolean isLinux() {
+        return System.getProperty("os.name")
+                     .toLowerCase()
+                     .indexOf("linux") >= 0;
+    }
 
-    public static void main(String[] args) {
+    private static boolean isWindows() {
+        return System.getProperty("os.name")
+                     .toLowerCase()
+                     .indexOf("win") >= 0;
+    }
 
-       get("http://rlzyggfwzx.bjchy.gov.cn/Residence/a/login");
-       File file = download("http://rlzyggfwzx.bjchy.gov.cn/Residence/servlet/validateCodeServlet?"+System.currentTimeMillis());
-
-       File desc = new File("/home/ycj/test.jpeg");
-        try {
-            FileUtils.copyFile(file,desc);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    private static String getValidateCode(File desc, String dataPath) {
+        Objects.requireNonNull(desc);
+        Objects.requireNonNull(dataPath);
 
         Tesseract instance = new Tesseract();
-        instance.setDatapath("/home/ycj/桌面/Tess4J/tessdata");
+        instance.setDatapath(dataPath);
         //将验证码图片的内容识别为字符串
         String result = null;
         try {
@@ -216,7 +236,10 @@ public class HttpHelper {
         } catch (TesseractException e) {
             e.printStackTrace();
         }
-        System.out.println(result);
+        return result;
+    }
+
+    public static void main(String[] args) {
 
 
     }
