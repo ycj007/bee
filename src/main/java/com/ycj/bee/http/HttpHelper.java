@@ -1,6 +1,7 @@
 package com.ycj.bee.http;
 
 import com.google.common.collect.Lists;
+import com.google.common.collect.Maps;
 import lombok.extern.log4j.Log4j2;
 import net.sourceforge.tess4j.Tesseract;
 import net.sourceforge.tess4j.TesseractException;
@@ -17,10 +18,7 @@ import java.nio.file.Files;
 import java.nio.file.attribute.FileAttribute;
 import java.nio.file.attribute.PosixFilePermission;
 import java.nio.file.attribute.PosixFilePermissions;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 
 
@@ -32,9 +30,13 @@ public class HttpHelper {
     private static OkHttpClient defaultClient;
     private static OkHttpClient clientWithAuth;
     private static Headers headers = Headers.of(
-            "User-Agent",
-            "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/69.0.3497.81 Chrome/69.0.3497.81 Safari/537.36"
-
+            "User-Agent","Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/69.0.3497.100 Safari/537.36"
+            ,
+            "Referer", "http://rlzyggfwzx.bjchy.gov.cn/Residence/a/login",
+            "Origin", "http://rlzyggfwzx.bjchy.gov.cn",
+            "Host", "rlzyggfwzx.bjchy.gov.cn",
+            "Upgrade-Insecure-Requests", "1",
+            "Accept","text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8"
 
     );
 
@@ -88,7 +90,28 @@ public class HttpHelper {
                                         }
                                         return data;
                                     }
+                                }).addInterceptor(new Interceptor() {
+                                    @Override
+                                    public Response intercept(Chain chain) throws IOException {
+                                        Request originalRequest = chain.request();
+
+
+                                        Request reRequest = null;
+                                        Request.Builder builder =       originalRequest.newBuilder()
+
+                                                                                   .method(originalRequest.method(),originalRequest.body());
+
+
+                                        headers.names()
+                                               .forEach(k -> {
+                                                   builder.addHeader(k, headers.get(k));
+                                               });
+                                        reRequest = builder.build();
+                                        return chain.proceed(reRequest);
+
+                                    }
                                 })
+                                .followRedirects(true)
                                 .build();
                         clientWithAuth = okHttpClient;
                     } else {
@@ -112,10 +135,12 @@ public class HttpHelper {
     }
 
     public static String get(String url) {
-        Request request = new Request.Builder()
-                .url(url)
-                .headers(headers)
-                .build();
+        Request request = null;
+        Request.Builder builder = new Request.Builder()
+                .url(url);
+
+        request = builder.build();
+
         try {
             Response response = getDefaultClient().newCall(request)
                                                   .execute();
@@ -134,10 +159,14 @@ public class HttpHelper {
 
         RequestBody body = RequestBody.create(JSON_TYPE, json);
 
-        Request request = new Request.Builder()
+        Request request = null;
+
+        Request.Builder builder = new Request.Builder()
                 .url(url)
-                .post(body)
-                .build();
+                .post(body);
+
+        request = builder.build();
+
 
         Response response = null;
         try {
@@ -150,6 +179,43 @@ public class HttpHelper {
             logger.error("post error", e);
         }
 
+        return null;
+    }
+
+
+    public static String postForm(String url, Map<String, String> data) {
+        RequestBody formBody = null;
+
+        FormBody.Builder builder = new FormBody.Builder();
+
+        data.forEach((k, v) -> {
+            builder.add(k, v);
+        });
+
+        formBody = builder.build();
+
+
+        Request request = null;
+
+        Request.Builder requestBuilder =
+                new Request.Builder()
+                        .url(url)
+                        .post(formBody);
+        request = requestBuilder.build();
+
+        try (Response response = getDefaultClient().newCall(request)
+                                                   .execute()) {
+            if (response.isSuccessful()) {
+
+
+                return response.body()
+                               .string();
+
+            }
+
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         return null;
     }
 
@@ -223,6 +289,25 @@ public class HttpHelper {
                      .indexOf("win") >= 0;
     }
 
+
+    private static String readValidateCode() {
+
+        Scanner scan = new Scanner(System.in);
+        // 从键盘接收数据
+
+        StringBuilder sb = new StringBuilder();
+        // next方式接收字符串
+        System.out.println("输入验证码：");
+        // 判断是否还有输入
+        if (scan.hasNext()) {
+            String str = scan.next();
+            sb.append(str);
+        }
+        scan.close();
+        return sb.toString();
+
+    }
+
     private static String getValidateCode(File desc, String dataPath) {
         Objects.requireNonNull(desc);
         Objects.requireNonNull(dataPath);
@@ -241,6 +326,44 @@ public class HttpHelper {
 
     public static void main(String[] args) {
 
+        String index = "http://rlzyggfwzx.bjchy.gov.cn/Residence/a/login";
+        String validateCode = "http://rlzyggfwzx.bjchy.gov.cn/Residence/servlet/validateCodeServlet?" + System.currentTimeMillis();
+        String login = "http://rlzyggfwzx.bjchy.gov.cn/Residence/a/login";
+
+        /**
+         * 访问首页
+         */
+
+        get(index);
+        /**
+         * download validatecode
+         */
+
+        File file = download(validateCode, ".jpg");
+        File descFile = new File("d://test.jpg");
+
+        try {
+            FileUtils.copyFile(file, descFile);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+
+        Map<String, String> data = Maps.newHashMap();
+        data.put("username", "bu3023130");
+        data.put("password", "Mtime123");
+        String readValidateCode = readValidateCode();
+        data.put("validateCode", readValidateCode);
+
+        String result = postForm(login, data);
+//        String result = posst(login, JSON.toJSONString(data));
+
+        //System.out.println(result);
+       // String requestUrl = "http://rlzyggfwzx.bjchy.gov.cn/Residence/a/rrs/agreement";
+        //String requestUrl = "http://rlzyggfwzx.bjchy.gov.cn/Residence/a/rrs/query";
+        String requestUrl = "http://rlzyggfwzx.bjchy.gov.cn/gdxw/501180.shtml";
+        result = get(requestUrl);
+        System.out.println(result);
 
     }
 
