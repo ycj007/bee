@@ -4,13 +4,22 @@ import com.ycj.bee.redis.RedisHelper;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
+import org.springframework.web.context.request.NativeWebRequest;
+import org.springframework.web.context.request.async.CallableProcessingInterceptor;
+import org.springframework.web.context.request.async.DeferredResult;
+import org.springframework.web.context.request.async.DeferredResultProcessingInterceptor;
+import org.springframework.web.servlet.config.annotation.AsyncSupportConfigurer;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.thymeleaf.spring5.SpringTemplateEngine;
 import org.thymeleaf.spring5.templateresolver.SpringResourceTemplateResolver;
 import org.thymeleaf.spring5.view.ThymeleafViewResolver;
 import org.thymeleaf.templatemode.TemplateMode;
 
+import java.util.concurrent.Callable;
+
 @SpringBootApplication
-public class BeeApplication {
+public class BeeApplication  {
 
     public static void main(String[] args) {
         SpringApplication.run(BeeApplication.class, args);
@@ -26,44 +35,86 @@ public class BeeApplication {
 
 
 
+    @Bean
+    public WebMvcConfigurer webMvcConfigurer(){
 
-   /* @Bean
-    public SpringResourceTemplateResolver templateResolver(){
-        // SpringResourceTemplateResolver automatically integrates with Spring's own
-        // resource resolution infrastructure, which is highly recommended.
-        SpringResourceTemplateResolver templateResolver = new SpringResourceTemplateResolver();
+        return  new WebMvcConfigurer() {
+            @Override
+            public void configureAsyncSupport(AsyncSupportConfigurer configurer) {
+               // configurer.setTaskExecutor(new ThreadPoolTaskExecutor());
+                configurer.setDefaultTimeout(20000);
+                configurer.registerCallableInterceptors(new CallableProcessingInterceptor() {
+                    @Override
+                    public <T> void beforeConcurrentHandling(NativeWebRequest request, Callable<T> task) throws Exception {
+                        System.out.println("beforeConcurrentHandling--------------------------");
+                    }
 
-        templateResolver.setPrefix("classpath:/templates/");
-        templateResolver.setSuffix(".thymes");
-        // HTML is the default value, added here for the sake of clarity.
-        templateResolver.setTemplateMode(TemplateMode.HTML);
-        // Template cache is true by default. Set to false if you want
-        // templates to be automatically updated when modified.
-        templateResolver.setCacheable(true);
-        return templateResolver;
+                    @Override
+                    public <T> void preProcess(NativeWebRequest request, Callable<T> task) throws Exception {
+                        System.out.println("preProcess--------------------------");
+                    }
+
+                    @Override
+                    public <T> void postProcess(NativeWebRequest request, Callable<T> task, Object concurrentResult) throws Exception {
+                        System.out.println("postProcess--------------------------");
+                    }
+
+                    @Override
+                    public <T> Object handleTimeout(NativeWebRequest request, Callable<T> task) throws Exception {
+                        System.out.println("handleTimeout--------------------------");
+                        return null;
+                    }
+
+                    @Override
+                    public <T> Object handleError(NativeWebRequest request, Callable<T> task, Throwable t) throws Exception {
+                        System.out.println("handleTimeout--------------------------");
+                        return null;
+                    }
+
+                    @Override
+                    public <T> void afterCompletion(NativeWebRequest request, Callable<T> task) throws Exception {
+
+                    }
+                });
+                configurer.registerDeferredResultInterceptors(new DeferredResultProcessingInterceptor(){
+
+                    @Override
+                    public <T> void beforeConcurrentHandling(NativeWebRequest request, DeferredResult<T> deferredResult) throws Exception {
+                        System.out.println("beforeConcurrentHandling--------------------------");
+                    }
+
+                    @Override
+                    public <T> void preProcess(NativeWebRequest request, DeferredResult<T> deferredResult) throws Exception {
+                        System.out.println("preProcess--------------------------");
+                    }
+
+                    @Override
+                    public <T> void postProcess(NativeWebRequest request, DeferredResult<T> deferredResult, Object concurrentResult) throws Exception {
+                        System.out.println("postProcess--------------------------");
+                    }
+
+                    @Override
+                    public <T> boolean handleTimeout(NativeWebRequest request, DeferredResult<T> deferredResult) throws Exception {
+                        System.out.println("handleTimeout--------------------------");
+                        return false;
+                    }
+
+                    @Override
+                    public <T> boolean handleError(NativeWebRequest request, DeferredResult<T> deferredResult, Throwable t) throws Exception {
+                        System.out.println("handleError--------------------------");
+                        return false;
+                    }
+
+                    @Override
+                    public <T> void afterCompletion(NativeWebRequest request, DeferredResult<T> deferredResult) throws Exception {
+                        System.out.println("afterCompletion--------------------------");
+                    }
+                });
+
+
+            }
+        };
     }
 
-    @Bean
-    public SpringTemplateEngine templateEngine(){
-        // SpringTemplateEngine automatically applies SpringStandardDialect and
-        // enables Spring's own MessageSource message resolution mechanisms.
-        SpringTemplateEngine templateEngine = new SpringTemplateEngine();
-        templateEngine.setTemplateResolver(templateResolver());
-        // Enabling the SpringEL compiler with Spring 4.2.4 or newer can
-        // speed up execution in most scenarios, but might be incompatible
-        // with specific cases when expressions in one template are reused
-        // across different data types, so this flag is "false" by default
-        // for safer backwards compatibility.
-        templateEngine.setEnableSpringELCompiler(true);
-        return templateEngine;
-    }
-
-    @Bean
-    public ThymeleafViewResolver viewResolver(){
-        ThymeleafViewResolver viewResolver = new ThymeleafViewResolver();
-        viewResolver.setTemplateEngine(templateEngine());
-
-        return viewResolver;
-    }*/
 
 }

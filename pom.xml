@@ -26,13 +26,22 @@
 
     <dependencies>
         <dependency>
+            <groupId>javax.websocket</groupId>
+            <artifactId>javax.websocket-api</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-thymeleaf</artifactId>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
-          <!--  <artifactId>spring-boot-starter-web</artifactId>-->
-            <artifactId>spring-boot-starter-webflux</artifactId>
+            <artifactId>spring-boot-starter-web</artifactId>
+            <!-- <artifactId>spring-boot-starter-webflux</artifactId>-->
         </dependency>
 
         <dependency>
@@ -85,20 +94,20 @@
             <groupId>net.sourceforge.tess4j</groupId>
             <artifactId>tess4j</artifactId>
             <version>3.4.8</version>
-          <!--  <exclusions>
-                <exclusion>
-                    <groupId>net.java.dev.jna</groupId>
-                    <artifactId>jna</artifactId>
+            <!--  <exclusions>
+                  <exclusion>
+                      <groupId>net.java.dev.jna</groupId>
+                      <artifactId>jna</artifactId>
 
-                </exclusion>
+                  </exclusion>
 
-            </exclusions>-->
+              </exclusions>-->
         </dependency>
-       <!-- <dependency>
-                     <groupId>net.java.dev.jna</groupId>
-                     <artifactId>jna</artifactId>
-                   <version>4.2.1</version>
-                </dependency>-->
+        <!-- <dependency>
+                      <groupId>net.java.dev.jna</groupId>
+                      <artifactId>jna</artifactId>
+                    <version>4.2.1</version>
+                 </dependency>-->
 
         <!-- https://mvnrepository.com/artifact/com.alibaba/fastjson -->
         <dependency>
